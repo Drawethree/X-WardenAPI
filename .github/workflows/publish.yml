@@ -199,8 +199,19 @@ jobs:
           grep -q "<artifactId>$ARTIFACT</artifactId>" published-metadata.xml
           echo "$URL resolves"
           # And that the build page got its jar, which is a different server path entirely.
-          curl -fsSI "$CI_BASE_URL/$SLUG/builds/${{ github.run_number }}/${{ steps.site.outputs.jar }}" > /dev/null
-          echo "$CI_BASE_URL/$SLUG/ updated"
+          # Shared hosting does not always serve a file the instant FTP finishes writing it,
+          # so this gets a few attempts before it is allowed to fail the publish.
+          CI_URL="$CI_BASE_URL/$SLUG/builds/${{ github.run_number }}/${{ steps.site.outputs.jar }}"
+          for attempt in 1 2 3 4 5 6; do
+            if curl -fsSI "$CI_URL" > /dev/null 2>&1; then
+              echo "$CI_BASE_URL/$SLUG/ updated"
+              exit 0
+            fi
+            echo "  not visible yet (attempt $attempt of 6), waiting"
+            sleep 5
+          done
+          echo "$CI_URL never became visible"
+          exit 1
 
       - name: GitHub release
         if: steps.meta.outputs.channel == 'releases'
