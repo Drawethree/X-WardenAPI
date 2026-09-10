@@ -17,7 +17,8 @@ Two things live here, and nothing else:
 ## Dependency
 
 Artifacts are published to [repo.drawethree.dev](https://repo.drawethree.dev). Every build,
-including per-commit snapshots, is listed at [ci.drawethree.dev](https://ci.drawethree.dev).
+including per-commit snapshots, is listed at
+[ci.drawethree.dev/x-warden](https://ci.drawethree.dev/x-warden/).
 
 ### Maven
 

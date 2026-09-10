@@ -9,9 +9,10 @@ on:
 permissions:
   contents: write
 
-# Two runs uploading at once would race on maven-metadata.xml, and the loser would
-# publish a version list missing the winner's entry. Queue instead of cancelling:
-# a cancelled run has already half-uploaded a tree.
+# Two runs of THIS repo uploading at once would race on maven-metadata.xml, and the
+# loser would publish a version list missing the winner's entry. Queue instead of
+# cancelling: a cancelled run has already half-uploaded a tree. Other repos publishing
+# at the same time are fine - they touch different artifact paths and a different slug.
 concurrency:
   group: publish
   cancel-in-progress: false
@@ -19,6 +20,7 @@ concurrency:
 env:
   GROUP_PATH: dev/drawethree/xwarden
   ARTIFACT: X-WardenAPI
+  SLUG: x-warden
   REPO_BASE_URL: https://repo.drawethree.dev
   CI_BASE_URL: https://ci.drawethree.dev
 
@@ -81,28 +83,35 @@ jobs:
         id: site
         run: |
           set -euo pipefail
-          # No `| head -1`: under pipefail a closed pipe surfaces as a failed step.
+          VERSION="${{ steps.meta.outputs.version }}"
+          # finalName is free to contain spaces and in some of these poms it does, so glob
+          # every jar and filter by classifier suffix rather than matching the artifact id.
+          # No `| head -1` either: under pipefail a closed pipe surfaces as a failed step.
           shopt -s nullglob
-          JAR=""
-          for f in target/"$ARTIFACT"-*.jar; do
+          SRC=""
+          for f in target/*.jar; do
             case "$f" in *-sources.jar|*-javadoc.jar) continue ;; esac
-            JAR="$(basename "$f")"
+            SRC="$f"
             break
           done
-          [ -n "$JAR" ] || { echo "no main jar in target/"; exit 1; }
-          BUILD="${{ github.run_number }}"
-          mkdir -p "site/builds/$BUILD"
-          cp "target/$JAR" "site/builds/$BUILD/$JAR"
-          cp ci/index.html site/index.html
-          cp hosting/ci.htaccess site/.htaccess
+          [ -n "$SRC" ] || { echo "no main jar in target/"; exit 1; }
 
-          # The build list lives on the host, not in git - fetch, prepend, put back.
-          curl -fsS "$CI_BASE_URL/builds.json" -o old.json || echo '[]' > old.json
+          # Republish it under the coordinate name whatever finalName said. A space in a
+          # download URL is a papercut for everyone who ever links to it.
+          JAR="$ARTIFACT-$VERSION.jar"
+          BUILD="${{ github.run_number }}"
+          mkdir -p "site/$SLUG/builds/$BUILD"
+          cp "$SRC" "site/$SLUG/builds/$BUILD/$JAR"
+          cp ci/index.html "site/$SLUG/index.html"
+
+          # The build list lives on the host, not in git - fetch, prepend, put back. It is
+          # per project, so three repos publishing at once cannot clobber each other.
+          curl -fsS "$CI_BASE_URL/$SLUG/builds.json" -o old.json || echo '[]' > old.json
           jq -e 'type == "array"' old.json >/dev/null 2>&1 || echo '[]' > old.json
 
           jq -n \
             --argjson number "$BUILD" \
-            --arg version "${{ steps.meta.outputs.version }}" \
+            --arg version "$VERSION" \
             --arg channel "${{ steps.meta.outputs.channel }}" \
             --arg commit "$GITHUB_SHA" \
             --arg short "$(git rev-parse --short HEAD)" \
@@ -114,7 +123,7 @@ jobs:
               short:$short, message:$message, author:$author, date:$date, file:$file}' > entry.json
 
           # Cap the listing so the page stays quick. Older jars stay on disk, just unlinked.
-          jq -s '(.[0:1] + .[1]) | .[0:100]' entry.json old.json > site/builds.json
+          jq -s '(.[0:1] + .[1]) | .[0:100]' entry.json old.json > "site/$SLUG/builds.json"
           echo "jar=$JAR" >> "$GITHUB_OUTPUT"
 
       - name: Install lftp
@@ -129,14 +138,15 @@ jobs:
           CHANNEL: ${{ steps.meta.outputs.channel }}
         run: |
           set -euo pipefail
-          # -R mirrors upward. No --delete: this tree is additive, and a bad local state
-          # must never be able to wipe published versions.
           # A secret pasted into the GitHub UI often carries a trailing newline. FTP sends
           # it as part of the password and the server answers 530, which is indistinguishable
           # from a wrong password. Control characters are never part of a real credential.
           FTP_USERNAME="$(printf '%s' "$FTP_USERNAME" | tr -d '[:cntrl:]')"
           FTP_PASSWORD="$(printf '%s' "$FTP_PASSWORD" | tr -d '[:cntrl:]')"
           FTP_HOST="$(printf '%s' "$FTP_HOST" | tr -d '[:cntrl:]')"
+          # staging/ starts at the group path, so the channel segment has to come from here.
+          # -R mirrors upward. No --delete: this tree is additive, and a bad local state
+          # must never be able to wipe published versions.
           lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "ftp://$FTP_HOST" -e "
             set ftp:ssl-force true;
             set ftp:ssl-protect-data true;
@@ -159,12 +169,11 @@ jobs:
           REMOTE: ${{ vars.FTP_CI_PATH || '/subdoms/ci' }}
         run: |
           set -euo pipefail
-          # A secret pasted into the GitHub UI often carries a trailing newline. FTP sends
-          # it as part of the password and the server answers 530, which is indistinguishable
-          # from a wrong password. Control characters are never part of a real credential.
           FTP_USERNAME="$(printf '%s' "$FTP_USERNAME" | tr -d '[:cntrl:]')"
           FTP_PASSWORD="$(printf '%s' "$FTP_PASSWORD" | tr -d '[:cntrl:]')"
           FTP_HOST="$(printf '%s' "$FTP_HOST" | tr -d '[:cntrl:]')"
+          # site/ already contains the project directory, so this mirrors into ci's root
+          # and still only ever writes under site/$SLUG.
           lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "ftp://$FTP_HOST" -e "
             set ftp:ssl-force true;
             set ftp:ssl-protect-data true;
@@ -175,6 +184,8 @@ jobs:
             set net:timeout 30;
             set net:reconnect-interval-base 5;
             set mirror:parallel-transfer-count 1;
+            put -O ${REMOTE}/ hosting/ci.htaccess -o .htaccess;
+            put -O ${REMOTE}/ ci/root-index.html -o index.html;
             mirror -R --no-symlinks --verbose site/ ${REMOTE}/;
             bye"
 
@@ -187,11 +198,15 @@ jobs:
           curl -fsSL -A "Apache-Maven/3.9.9" "$URL" -o published-metadata.xml
           grep -q "<artifactId>$ARTIFACT</artifactId>" published-metadata.xml
           echo "$URL resolves"
+          # And that the build page got its jar, which is a different server path entirely.
+          curl -fsSI "$CI_BASE_URL/$SLUG/builds/${{ github.run_number }}/${{ steps.site.outputs.jar }}" > /dev/null
+          echo "$CI_BASE_URL/$SLUG/ updated"
 
       - name: GitHub release
         if: steps.meta.outputs.channel == 'releases'
         uses: softprops/action-gh-release@v2
         with:
+          # target/*.jar rather than a name pattern: finalName may not match the artifact id.
           files: |
-            target/${{ env.ARTIFACT }}-*.jar
+            target/*.jar
           generate_release_notes: true
