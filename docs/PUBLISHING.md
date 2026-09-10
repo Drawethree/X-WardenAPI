@@ -153,8 +153,19 @@ metadata and the loser's version would vanish from the list.
 
 ## Troubleshooting
 
-**The smoke test fails with 403.** Almost always hotlink protection or a `mod_security` rule that
-rejects requests without a browser `User-Agent`. Maven sends `Apache-Maven/3.9.x`. Reproduce it:
+**The upload fails with `530 Login authentication failed`.** Check the FTP allowlist before
+touching the password. Forpsi restricts FTP by country under `Webhosting → drawethree.dev → FTP`,
+and the account was originally limited to Czech Republic and Slovakia. GitHub's runners are Azure
+machines in the United States, so they were refused — and Pure-FTPd returns the same `530` for a
+geo-blocked account as for a wrong password, which makes it look exactly like a credential fault.
+The IP field is no help: GitHub publishes over 5,000 IPv4 ranges for Actions and rotates them.
+
+United States is now on the allowlist, which is what makes this work. If a run starts failing on
+login again, check whether that entry survived, and whether GitHub has moved your job to a region
+outside it.
+
+**The smoke test fails with 403.** Hotlink protection or a `mod_security` rule that rejects
+requests without a browser `User-Agent`. Maven sends `Apache-Maven/3.9.x`. Reproduce it:
 
 ```bash
 curl -A "Apache-Maven/3.9.9" -I https://repo.drawethree.dev/releases/
@@ -162,6 +173,11 @@ curl -A "Apache-Maven/3.9.9" -I https://repo.drawethree.dev/releases/
 
 If a browser works and that does not, ask your host to disable hotlink protection on the
 subdomain.
+
+**The smoke test fails with 404 while the upload reported success.** The upload is going to the
+wrong depth. `staging/` starts at the group path, so the mirror target has to carry the
+`releases`/`snapshots` segment itself — without it everything publishes one level too high and
+Maven never sees it.
 
 **The upload fails on the certificate.** Shared hosts often present a certificate that does not
 match the FTP hostname. Set `ssl:verify-certificate false` in both `lftp` steps — you lose
