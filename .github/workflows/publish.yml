@@ -76,7 +76,6 @@ jobs:
         run: |
           mvn -B deploy -DskipTests \
             -DaltDeploymentRepository="drawethree::file://$GITHUB_WORKSPACE/staging"
-          cp hosting/repo.htaccess staging/.htaccess
 
       - name: Assemble the build listing
         id: site
@@ -150,6 +149,7 @@ jobs:
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
           REMOTE: ${{ vars.FTP_REPO_PATH || '/subdoms/repo' }}
+          CHANNEL: ${{ steps.meta.outputs.channel }}
         run: |
           set -euo pipefail
           # -R mirrors upward. No --delete: this tree is additive, and a bad local state
@@ -171,7 +171,8 @@ jobs:
             set net:timeout 30;
             set net:reconnect-interval-base 5;
             set mirror:parallel-transfer-count 1;
-            mirror -R --no-symlinks --verbose staging/ ${REMOTE}/;
+            put -O ${REMOTE}/ hosting/repo.htaccess -o .htaccess;
+            mirror -R --no-symlinks --verbose staging/ ${REMOTE}/${CHANNEL}/;
             bye"
 
       - name: Upload to ci.drawethree.dev
