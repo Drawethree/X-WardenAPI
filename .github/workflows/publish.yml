@@ -121,6 +121,28 @@ jobs:
       - name: Install lftp
         run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
 
+      - name: Pre-flight FTP check
+        # Isolates the variable. curl reaches this server fine from a home connection,
+        # so if it fails here too the runner is being refused - datacentre or foreign IP
+        # blocking on the host - and no amount of lftp tuning fixes that. Never fails the
+        # job; the real upload is the next step and it decides.
+        continue-on-error: true
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          echo "runner egress IP: $(curl -s --max-time 15 https://api.ipify.org || echo unknown)"
+          echo "resolving $FTP_HOST:"
+          getent hosts "$FTP_HOST" || echo "  DNS lookup failed"
+          echo "tcp/21 reachable?"
+          timeout 15 bash -c "exec 3<>/dev/tcp/$FTP_HOST/21" && echo "  OPEN" || echo "  REFUSED or filtered"
+          echo "--- curl FTPS listing ---"
+          set +e
+          curl -sv --ssl-reqd --ftp-pasv -u "$FTP_USERNAME:$FTP_PASSWORD"                "ftp://$FTP_HOST/subdoms/" -l -o /dev/null --max-time 60 > ftp-probe.log 2>&1
+          echo "curl exit code: $?"
+          tail -40 ftp-probe.log
+
       - name: Upload to repo.drawethree.dev
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
