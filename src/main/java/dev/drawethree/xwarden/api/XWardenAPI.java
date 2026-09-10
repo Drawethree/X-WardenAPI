@@ -1,5 +1,15 @@
 package dev.drawethree.xwarden.api;
 
+import dev.drawethree.xwarden.api.addon.XWardenAddonInfo;
+import dev.drawethree.xwarden.api.automation.XWardenAutomationAPI;
+import dev.drawethree.xwarden.api.config.XWardenConfigAPI;
+import dev.drawethree.xwarden.api.economy.XWardenEconomyAPI;
+import dev.drawethree.xwarden.api.economy.XWardenLedgerAPI;
+import dev.drawethree.xwarden.api.flags.XWardenFlagsAPI;
+import dev.drawethree.xwarden.api.integrity.XWardenIntegrityAPI;
+import dev.drawethree.xwarden.api.module.XWardenModulesAPI;
+import dev.drawethree.xwarden.api.network.XWardenNetworkAPI;
+import dev.drawethree.xwarden.api.staff.XWardenStaffAPI;
 import dev.drawethree.xwarden.api.flags.Violation;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -184,6 +194,68 @@ public interface XWardenAPI {
      * Whether a module is switched on and running.
      */
     boolean isModuleEnabled(String moduleId);
+
+
+    /**
+     * How many methods this API has grown by since it was first published.
+     *
+     * <p>Check it before calling anything added after the version you built against. An addon
+     * compiled against a newer X-Warden and run on an older one hits {@code NoSuchMethodError} at
+     * the call site, which is a stack trace nobody can act on; refusing politely against a number
+     * is better for everybody.
+     */
+    int apiVersion();
+
+    /** The findings X-Warden has recorded, and marking them as dealt with. */
+    XWardenFlagsAPI getFlagsApi();
+
+    /** Where the money went. */
+    XWardenLedgerAPI getLedgerApi();
+
+    /** The economy being watched, and reversing what it should not have paid out. */
+    XWardenEconomyAPI getEconomyApi();
+
+    /** Duplicated items, proven rather than suspected. */
+    XWardenIntegrityAPI getIntegrityApi();
+
+    /** Accounts that look like the same hands. Read-only; there is no action path here. */
+    XWardenNetworkAPI getNetworkApi();
+
+    /** How much like a machine somebody is mining. */
+    XWardenAutomationAPI getAutomationApi();
+
+    /** The four modules, the checks inside them, and whether those checks can actually fire. */
+    XWardenModulesAPI getModulesApi();
+
+    /** What a staff member can do, and what the server currently looks like. */
+    XWardenStaffAPI getStaffApi();
+
+    /** Reading and changing X-Warden's configuration. */
+    XWardenConfigAPI getConfigApi();
+
+    /** Every addon X-Warden has loaded. */
+    List<XWardenAddonInfo> getLoadedAddons();
+
+    /** @return false if there is no addon by that name, or it is already running */
+    boolean enableAddon(String name);
+
+    boolean disableAddon(String name);
+
+    /**
+     * Loads an addon jar that is already in the addons folder, without a restart.
+     *
+     * @param filename the jar's file name; it must sit directly in {@code plugins/X-Warden/addons/}
+     */
+    boolean loadAddonFromFile(String filename);
+
+    /**
+     * Registers where a web panel addon can be reached, so {@code /xwarden} can tell staff. Pass
+     * null on disable.
+     */
+    void setDashboardUrl(String url);
+
+    /** The URL a panel addon registered, or null if none is running. */
+    String getDashboardUrl();
 
     /**
      * Holds the running instance. Set by the addon on enable and cleared on disable.
