@@ -132,12 +132,17 @@ jobs:
           # -R mirrors upward. No --delete: this tree is additive, and a bad local state
           # must never be able to wipe published versions.
           lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "ftp://$FTP_HOST" -e "
+            debug 3;
             set ftp:ssl-force true;
             set ftp:ssl-protect-data true;
             set ssl:verify-certificate true;
+            set ftp:passive-mode true;
+            set ftp:prefer-epsv false;
             set net:max-retries 3;
-            set net:timeout 20;
-            mirror -R --no-symlinks --parallel=4 --verbose staging/ ${REMOTE}/;
+            set net:timeout 30;
+            set net:reconnect-interval-base 5;
+            set mirror:parallel-transfer-count 1;
+            mirror -R --no-symlinks --verbose staging/ ${REMOTE}/;
             bye"
 
       - name: Upload to ci.drawethree.dev
@@ -149,12 +154,17 @@ jobs:
         run: |
           set -euo pipefail
           lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "ftp://$FTP_HOST" -e "
+            debug 3;
             set ftp:ssl-force true;
             set ftp:ssl-protect-data true;
             set ssl:verify-certificate true;
+            set ftp:passive-mode true;
+            set ftp:prefer-epsv false;
             set net:max-retries 3;
-            set net:timeout 20;
-            mirror -R --no-symlinks --parallel=4 --verbose site/ ${REMOTE}/;
+            set net:timeout 30;
+            set net:reconnect-interval-base 5;
+            set mirror:parallel-transfer-count 1;
+            mirror -R --no-symlinks --verbose site/ ${REMOTE}/;
             bye"
 
       - name: Smoke test the published artifact
