@@ -199,19 +199,23 @@ jobs:
           grep -q "<artifactId>$ARTIFACT</artifactId>" published-metadata.xml
           echo "$URL resolves"
           # And that the build page got its jar, which is a different server path entirely.
-          # Shared hosting does not always serve a file the instant FTP finishes writing it,
-          # so this gets a few attempts before it is allowed to fail the publish.
+          # This one warns rather than fails. The upload step already proved the transfer
+          # succeeded - lftp exits non-zero if it did not - and this page is a convenience,
+          # so failing a publish that demonstrably published is the worse error. The metadata
+          # check above stays fatal; that is the one consumers actually depend on.
+          # It reports the code it got, so a recurrence is diagnosable without log access.
           CI_URL="$CI_BASE_URL/$SLUG/builds/${{ github.run_number }}/${{ steps.site.outputs.jar }}"
-          for attempt in 1 2 3 4 5 6; do
-            if curl -fsSI "$CI_URL" > /dev/null 2>&1; then
+          CODE=000
+          for attempt in $(seq 1 10); do
+            CODE="$(curl -s -o /dev/null -w '%{http_code}' -I --max-time 15 "$CI_URL" || echo 000)"
+            if [ "$CODE" = "200" ]; then
               echo "$CI_BASE_URL/$SLUG/ updated"
               exit 0
             fi
-            echo "  not visible yet (attempt $attempt of 6), waiting"
-            sleep 5
+            echo "  build page returned $CODE (attempt $attempt of 10), waiting"
+            sleep 6
           done
-          echo "$CI_URL never became visible"
-          exit 1
+          echo "::warning::$CI_URL still returns $CODE. The artifacts published; the build page did not confirm."
 
       - name: GitHub release
         if: steps.meta.outputs.channel == 'releases'
