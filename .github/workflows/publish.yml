@@ -133,6 +133,7 @@ jobs:
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
         run: |
           echo "runner egress IP: $(curl -s --max-time 15 https://api.ipify.org || echo unknown)"
+          echo "credential shape, values not printed: user=${#FTP_USERNAME} chars, pass=${#FTP_PASSWORD} chars, host=${#FTP_HOST} chars"
           echo "resolving $FTP_HOST:"
           getent hosts "$FTP_HOST" || echo "  DNS lookup failed"
           echo "tcp/21 reachable?"
@@ -153,6 +154,12 @@ jobs:
           set -euo pipefail
           # -R mirrors upward. No --delete: this tree is additive, and a bad local state
           # must never be able to wipe published versions.
+          # A secret pasted into the GitHub UI often carries a trailing newline. FTP sends
+          # it as part of the password and the server answers 530, which is indistinguishable
+          # from a wrong password. Control characters are never part of a real credential.
+          FTP_USERNAME="$(printf '%s' "$FTP_USERNAME" | tr -d '[:cntrl:]')"
+          FTP_PASSWORD="$(printf '%s' "$FTP_PASSWORD" | tr -d '[:cntrl:]')"
+          FTP_HOST="$(printf '%s' "$FTP_HOST" | tr -d '[:cntrl:]')"
           lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "ftp://$FTP_HOST" -e "
             debug 3;
             set ftp:ssl-force true;
@@ -175,6 +182,12 @@ jobs:
           REMOTE: ${{ vars.FTP_CI_PATH || '/subdoms/ci' }}
         run: |
           set -euo pipefail
+          # A secret pasted into the GitHub UI often carries a trailing newline. FTP sends
+          # it as part of the password and the server answers 530, which is indistinguishable
+          # from a wrong password. Control characters are never part of a real credential.
+          FTP_USERNAME="$(printf '%s' "$FTP_USERNAME" | tr -d '[:cntrl:]')"
+          FTP_PASSWORD="$(printf '%s' "$FTP_PASSWORD" | tr -d '[:cntrl:]')"
+          FTP_HOST="$(printf '%s' "$FTP_HOST" | tr -d '[:cntrl:]')"
           lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "ftp://$FTP_HOST" -e "
             debug 3;
             set ftp:ssl-force true;
