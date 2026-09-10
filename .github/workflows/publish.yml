@@ -126,7 +126,7 @@ jobs:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
-          REMOTE: ${{ vars.FTP_REPO_PATH || '/www/repo' }}
+          REMOTE: ${{ vars.FTP_REPO_PATH || '/subdoms/repo' }}
         run: |
           set -euo pipefail
           # -R mirrors upward. No --delete: this tree is additive, and a bad local state
@@ -145,7 +145,7 @@ jobs:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
-          REMOTE: ${{ vars.FTP_CI_PATH || '/www/ci' }}
+          REMOTE: ${{ vars.FTP_CI_PATH || '/subdoms/ci' }}
         run: |
           set -euo pipefail
           lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "ftp://$FTP_HOST" -e "

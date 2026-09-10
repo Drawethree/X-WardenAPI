@@ -46,16 +46,23 @@ Cloudflare proxies HTTP/HTTPS only, and FTP through the orange cloud does not wo
 
 ### 2. Subdomains on the hosting
 
-Hosting is Forpsi. The two directories live under the web root:
+Hosting is Forpsi. Subdomains are served out of `/subdoms/`, **not** out of a folder in the web
+root:
 
 ```
-/www/repo    ->  repo.drawethree.dev
-/www/ci      ->  ci.drawethree.dev
+/subdoms/repo    ->  repo.drawethree.dev
+/subdoms/ci      ->  ci.drawethree.dev
+/www             ->  the portfolio site at www.drawethree.dev
 ```
 
-Creating the folders is only half of it — the subdomains have to be pointed at them in the Forpsi
-panel. Until that mapping exists, both names fall through to the catch-all vhost and serve the
-portfolio site at `drawethree.dev`. **A 200 is not proof the subdomain works**; check the content.
+A folder you create yourself at `/www/repo` is served at `www.drawethree.dev/repo/` and nowhere
+else — uploads to it succeed, and the subdomain 404s. Mapping a subdomain in the panel creates
+its `/subdoms/` directory, and the mapping takes a few minutes to reach the web server after the
+panel reports success.
+
+Until the mapping applies, the name falls through to the catch-all vhost and serves the portfolio
+site. **A 200 is not proof the subdomain works** — check the content, or upload a probe file and
+fetch it back.
 
 TLS needs nothing. The hosting already serves a wildcard `*.drawethree.dev` certificate (Actalis,
 via the Aruba front end), which covers both names. That matters more than it sounds — Maven 3.8.1
@@ -75,12 +82,21 @@ curl -s https://repo.drawethree.dev/ | head -c 200   # must NOT be the portfolio
 
 | Secret | Value |
 |---|---|
-| `FTP_HOST` | FTP hostname, e.g. `ftp.drawethree.dev` — hostname only, no `ftp://` |
-| `FTP_USERNAME` | FTP account username |
-| `FTP_PASSWORD` | FTP account password |
+| `FTP_HOST` | `ftpx.forpsi.com` — hostname only, no `ftp://` |
+| `FTP_USERNAME` | `www.drawethree.dev` (Forpsi uses the domain as the login) |
+| `FTP_PASSWORD` | the FTP password |
 
-Make a **dedicated FTP account** scoped to just these two directories rather than reusing the
-main account. It is a password sitting in CI; give it as little reach as you can.
+Explicit FTPS is supported and verified against this host, so `ftp:ssl-force true` in the workflow
+holds — the password never crosses the wire in the clear.
+
+The web IP does not answer on port 21 at all; FTP lives on `ftpx.forpsi.com`. There is also an
+OpenSSH on port 2222 of the web IP, publickey-only, if a Forpsi plan ever exposes SFTP — that
+would be the better transport, since CI would hold a revocable key rather than the account
+password.
+
+That is the main hosting account, which reaches the whole site. If Forpsi lets you add an FTP
+account scoped to `/subdoms`, use one — and rotate this password if it has ever been pasted
+anywhere.
 
 ### 4. Repository variables
 
