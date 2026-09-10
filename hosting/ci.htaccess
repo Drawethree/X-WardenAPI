@@ -1,0 +1,17 @@
+# Served at ci.drawethree.dev.
+
+Options -Indexes -MultiViews
+DirectoryIndex index.html
+
+AddType application/java-archive .jar
+AddType application/json .json
+
+<IfModule mod_headers.c>
+    # The page reads builds.json on load; a cached copy means new builds do not appear.
+    <FilesMatch "^builds\.json$">
+        Header set Cache-Control "no-cache, must-revalidate"
+    </FilesMatch>
+    <FilesMatch "\.jar$">
+        Header set Cache-Control "public, max-age=86400"
+    </FilesMatch>
+</IfModule>

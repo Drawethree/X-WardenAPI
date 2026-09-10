@@ -1,0 +1,176 @@
+name: Publish
+
+on:
+  push:
+    branches: [ master ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Two runs uploading at once would race on maven-metadata.xml, and the loser would
+# publish a version list missing the winner's entry. Queue instead of cancelling:
+# a cancelled run has already half-uploaded a tree.
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+env:
+  GROUP_PATH: dev/drawethree/xwarden
+  ARTIFACT: X-WardenAPI
+  REPO_BASE_URL: https://repo.drawethree.dev
+  CI_BASE_URL: https://ci.drawethree.dev
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Work out version and channel
+        id: meta
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+            CHANNEL=releases
+            # The tag is the source of truth for a release; stamp it into the pom so the
+            # deployed artifact and the tag can never disagree.
+            mvn -B -q org.codehaus.mojo:versions-maven-plugin:2.18.0:set \
+              -DnewVersion="$VERSION" -DgenerateBackupPoms=false
+          else
+            VERSION="$(mvn -B -q -DforceStdout help:evaluate -Dexpression=project.version)"
+            CHANNEL=snapshots
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "Publishing $VERSION to $CHANNEL"
+
+      - name: Build and test
+        run: mvn -B clean verify
+
+      - name: Seed the existing repository metadata
+        # A file:// deploy merges into whatever metadata is already at the target. Pull the
+        # live copies down first, or every publish would overwrite the version list with a
+        # list of exactly one version.
+        run: |
+          set -euo pipefail
+          DIR="staging/$GROUP_PATH/$ARTIFACT"
+          mkdir -p "$DIR/${{ steps.meta.outputs.version }}"
+          URL="$REPO_BASE_URL/${{ steps.meta.outputs.channel }}/$GROUP_PATH/$ARTIFACT"
+          # 404 on the first ever publish is expected, hence the || true.
+          curl -fsS "$URL/maven-metadata.xml" -o "$DIR/maven-metadata.xml" || true
+          curl -fsS "$URL/${{ steps.meta.outputs.version }}/maven-metadata.xml" \
+               -o "$DIR/${{ steps.meta.outputs.version }}/maven-metadata.xml" || true
+
+      - name: Deploy into the staging tree
+        run: |
+          mvn -B deploy -DskipTests \
+            -DaltDeploymentRepository="drawethree::file://$GITHUB_WORKSPACE/staging"
+          cp hosting/repo.htaccess staging/.htaccess
+
+      - name: Assemble the build listing
+        id: site
+        run: |
+          set -euo pipefail
+          # No `| head -1`: under pipefail a closed pipe surfaces as a failed step.
+          shopt -s nullglob
+          JAR=""
+          for f in target/"$ARTIFACT"-*.jar; do
+            case "$f" in *-sources.jar|*-javadoc.jar) continue ;; esac
+            JAR="$(basename "$f")"
+            break
+          done
+          [ -n "$JAR" ] || { echo "no main jar in target/"; exit 1; }
+          BUILD="${{ github.run_number }}"
+          mkdir -p "site/builds/$BUILD"
+          cp "target/$JAR" "site/builds/$BUILD/$JAR"
+          cp ci/index.html site/index.html
+          cp hosting/ci.htaccess site/.htaccess
+
+          # The build list lives on the host, not in git - fetch, prepend, put back.
+          curl -fsS "$CI_BASE_URL/builds.json" -o old.json || echo '[]' > old.json
+          jq -e 'type == "array"' old.json >/dev/null 2>&1 || echo '[]' > old.json
+
+          jq -n \
+            --argjson number "$BUILD" \
+            --arg version "${{ steps.meta.outputs.version }}" \
+            --arg channel "${{ steps.meta.outputs.channel }}" \
+            --arg commit "$GITHUB_SHA" \
+            --arg short "$(git rev-parse --short HEAD)" \
+            --arg message "$(git log -1 --pretty=%s)" \
+            --arg author "$(git log -1 --pretty=%an)" \
+            --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg file "$JAR" \
+            '{number:$number, version:$version, channel:$channel, commit:$commit,
+              short:$short, message:$message, author:$author, date:$date, file:$file}' > entry.json
+
+          # Cap the listing so the page stays quick. Older jars stay on disk, just unlinked.
+          jq -s '(.[0:1] + .[1]) | .[0:100]' entry.json old.json > site/builds.json
+          echo "jar=$JAR" >> "$GITHUB_OUTPUT"
+
+      - name: Install lftp
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+
+      - name: Upload to repo.drawethree.dev
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          REMOTE: ${{ vars.FTP_REPO_PATH || '/www/repo' }}
+        run: |
+          set -euo pipefail
+          # -R mirrors upward. No --delete: this tree is additive, and a bad local state
+          # must never be able to wipe published versions.
+          lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "ftp://$FTP_HOST" -e "
+            set ftp:ssl-force true;
+            set ftp:ssl-protect-data true;
+            set ssl:verify-certificate true;
+            set net:max-retries 3;
+            set net:timeout 20;
+            mirror -R --no-symlinks --parallel=4 --verbose staging/ ${REMOTE}/;
+            bye"
+
+      - name: Upload to ci.drawethree.dev
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          REMOTE: ${{ vars.FTP_CI_PATH || '/www/ci' }}
+        run: |
+          set -euo pipefail
+          lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "ftp://$FTP_HOST" -e "
+            set ftp:ssl-force true;
+            set ftp:ssl-protect-data true;
+            set ssl:verify-certificate true;
+            set net:max-retries 3;
+            set net:timeout 20;
+            mirror -R --no-symlinks --parallel=4 --verbose site/ ${REMOTE}/;
+            bye"
+
+      - name: Smoke test the published artifact
+        run: |
+          set -euo pipefail
+          URL="$REPO_BASE_URL/${{ steps.meta.outputs.channel }}/$GROUP_PATH/$ARTIFACT/maven-metadata.xml"
+          # A shared host that 403s Maven's User-Agent, or serves a 404 page with a 200,
+          # both look fine until somebody tries to depend on this. Catch it here.
+          curl -fsSL -A "Apache-Maven/3.9.9" "$URL" -o published-metadata.xml
+          grep -q "<artifactId>$ARTIFACT</artifactId>" published-metadata.xml
+          echo "$URL resolves"
+
+      - name: GitHub release
+        if: steps.meta.outputs.channel == 'releases'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            target/${{ env.ARTIFACT }}-*.jar
+          generate_release_notes: true

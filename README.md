@@ -16,18 +16,21 @@ Two things live here, and nothing else:
 
 ## Dependency
 
+Artifacts are published to [repo.drawethree.dev](https://repo.drawethree.dev). Every build,
+including per-commit snapshots, is listed at [ci.drawethree.dev](https://ci.drawethree.dev).
+
 ### Maven
 
 ```xml
 <repository>
-    <id>jitpack.io</id>
-    <url>https://jitpack.io</url>
+    <id>drawethree</id>
+    <url>https://repo.drawethree.dev/releases</url>
 </repository>
 
 <dependency>
-    <groupId>com.github.drawethree</groupId>
+    <groupId>dev.drawethree.xwarden</groupId>
     <artifactId>X-WardenAPI</artifactId>
-    <version>LATEST</version>
+    <version>1.0.0</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -36,13 +39,20 @@ Two things live here, and nothing else:
 
 ```groovy
 repositories {
-    maven { url 'https://jitpack.io' }
+    maven { url 'https://repo.drawethree.dev/releases' }
 }
 
 dependencies {
-    compileOnly 'com.github.drawethree:X-WardenAPI:LATEST'
+    compileOnly 'dev.drawethree.xwarden:X-WardenAPI:1.0.0'
 }
 ```
+
+Pin a real version. Maven 3 dropped `LATEST` and `RELEASE` for dependency resolution, so a build
+that asks for one resolves differently depending on who runs it, or not at all. The development
+head is published to `https://repo.drawethree.dev/snapshots` as `1.0.0-SNAPSHOT` if you want it.
+
+Sources and javadoc jars are published alongside each release, so your IDE will show the contract
+and its comments rather than decompiled bytecode.
 
 Always `provided` / `compileOnly`. X-Warden supplies these classes at runtime; shading them into your
 own jar puts a second copy on the server and the two will not be the same class.

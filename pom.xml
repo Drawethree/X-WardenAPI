@@ -6,12 +6,34 @@
 
     <groupId>dev.drawethree.xwarden</groupId>
     <artifactId>X-WardenAPI</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>X-WardenAPI</name>
     <description>Official API for the X-Warden plugin</description>
     <url>https://builtbybit.com/resources/x-warden-anti-cheat-anti-exploit.125374/</url>
+
+    <licenses>
+        <license>
+            <name>GNU General Public License v3.0</name>
+            <url>https://www.gnu.org/licenses/gpl-3.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>drawethree</id>
+            <name>Jan Kluka</name>
+            <url>https://drawethree.dev</url>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:https://github.com/Drawethree/X-WardenAPI.git</connection>
+        <developerConnection>scm:git:git@github.com:Drawethree/X-WardenAPI.git</developerConnection>
+        <url>https://github.com/Drawethree/X-WardenAPI</url>
+    </scm>
 
     <properties>
         <java.version>17</java.version>
@@ -65,6 +87,23 @@
         </dependency>
     </dependencies>
 
+    <!-- Where the artifacts end up. Nothing writes here directly - the hosting is plain FTP with
+         no HTTP PUT endpoint, so the release workflow deploys into a local staging tree with
+         -DaltDeploymentRepository and mirrors that up. These URLs are the read side, recorded here
+         so the published pom says where it came from. -->
+    <distributionManagement>
+        <repository>
+            <id>drawethree-releases</id>
+            <name>drawethree.dev releases</name>
+            <url>https://repo.drawethree.dev/releases</url>
+        </repository>
+        <snapshotRepository>
+            <id>drawethree-snapshots</id>
+            <name>drawethree.dev snapshots</name>
+            <url>https://repo.drawethree.dev/snapshots</url>
+        </snapshotRepository>
+    </distributionManagement>
+
     <build>
         <defaultGoal>clean install</defaultGoal>
         <plugins>
@@ -80,6 +119,47 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.2.5</version>
+            </plugin>
+
+            <!-- An API jar is read in an IDE more often than it is run. Sources and javadoc are
+                 what make ctrl-click land on the contract and its comments instead of a decompiler. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.11.2</version>
+                <configuration>
+                    <doclint>none</doclint>
+                    <quiet>true</quiet>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Pinned because the workflow passes id::url to altDeploymentRepository, which is
+                 the 3.x form; 2.x wants a layout segment in the middle. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-deploy-plugin</artifactId>
+                <version>3.1.4</version>
             </plugin>
         </plugins>
     </build>

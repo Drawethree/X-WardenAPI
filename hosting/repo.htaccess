@@ -1,0 +1,30 @@
+# Served at repo.drawethree.dev. A Maven repository is nothing but static files;
+# this only stops Apache from getting clever about them.
+
+Options +Indexes -MultiViews
+IndexOptions FancyIndexing HTMLTable NameWidth=* SuppressDescription
+
+AddType application/java-archive .jar
+AddType text/xml .pom
+AddType text/plain .sha1
+AddType text/plain .md5
+AddType text/plain .sha256
+AddType text/plain .sha512
+
+# Wrapped because a host without mod_headers would 500 on a bare Header directive,
+# and that would take the whole repository down rather than just lose the caching.
+<IfModule mod_headers.c>
+    # Releases are immutable, so they can be cached hard. Metadata is not - it gains a
+    # line on every publish, and a stale copy hides the newest version from everyone.
+    <FilesMatch "^maven-metadata\.xml">
+        Header set Cache-Control "public, max-age=60, must-revalidate"
+    </FilesMatch>
+    <FilesMatch "\.(jar|pom)$">
+        Header set Cache-Control "public, max-age=86400"
+    </FilesMatch>
+</IfModule>
+
+# Maven identifies itself as "Apache-Maven/3.x", not a browser. If your host ships
+# hotlink protection or a mod_security rule keyed on User-Agent, it will 403 every
+# build in the world while looking perfectly fine in a browser. Test with:
+#   curl -A "Apache-Maven/3.9.9" -I https://repo.drawethree.dev/releases/
