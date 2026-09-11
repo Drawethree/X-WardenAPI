@@ -267,6 +267,15 @@ public interface XWardenAPI {
     boolean unloadAddon(String name);
 
     /**
+     * The jars sitting in {@code plugins/X-Warden/addons/}, loaded or not.
+     *
+     * <p>What {@link #loadAddonFromFile(String)} will accept. A jar's file name is rarely the
+     * addon's name - {@code X-Warden-Dashboard-1.0.0.jar} holds an addon called {@code Dashboard} -
+     * so anything offering a choice of jars has to read the folder rather than the loaded list.
+     */
+    List<String> addonFileNames();
+
+    /**
      * Registers where a web panel addon can be reached, so {@code /xwarden} can tell staff. Pass
      * null on disable.
      */
