@@ -36,7 +36,20 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-          cache: maven
+
+      # Not setup-java's `cache: maven`, which does not save when the job fails - and a run
+      # that could not reach a dependency is exactly the run whose cache you wanted. Restored
+      # and saved explicitly instead, so one successful resolve insulates every later build
+      # from an upstream repository being down. api-itemsadder is published to a single host
+      # with a record of going down, and there is no mirror of it anywhere.
+      - name: Restore the Maven repository
+        id: m2
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.m2/repository
+          key: m2-x-warden-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            m2-x-warden-
 
       - name: Work out version and channel
         id: meta
@@ -58,6 +71,7 @@ jobs:
           echo "Publishing $VERSION to $CHANNEL"
 
       - name: Build and test
+        id: build
         run: mvn -B clean verify
 
       - name: Seed the existing repository metadata
@@ -225,3 +239,10 @@ jobs:
           files: |
             target/*.jar
           generate_release_notes: true
+
+      - name: Save the Maven repository
+        if: always() && steps.build.outcome == 'success' && steps.m2.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.m2/repository
+          key: m2-x-warden-${{ hashFiles('**/pom.xml') }}
