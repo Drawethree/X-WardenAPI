@@ -333,9 +333,12 @@ jobs:
         if: steps.meta.outputs.channel == 'releases'
         uses: softprops/action-gh-release@v2
         with:
-          # target/*.jar rather than a name pattern: finalName may not match the artifact id.
+          # From the staging tree, not target/. Two of these poms set a finalName with a
+          # space in it, and GitHub turns a space in an asset name into a dot - so target/
+          # would attach X-PrisonAPI.1.9.jar. The deploy already wrote coordinate-named
+          # copies, which is what a release should be called.
           files: |
-            target/*.jar
+            staging/**/*.jar
           generate_release_notes: true
 
       - name: Save the Maven repository
