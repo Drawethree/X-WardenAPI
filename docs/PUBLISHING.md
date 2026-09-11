@@ -64,11 +64,12 @@ DNS is on Cloudflare. Both records point at the web hosting — the same address
 not the game server address the `play` and `demo-*` records use:
 
 ```
-repo    A    185.129.138.221    DNS only
-ci      A    185.129.138.221    DNS only
+repo        A    185.129.138.221    DNS only
+ci          A    185.129.138.221    DNS only
+javadocs    A    185.129.138.221    DNS only
 ```
 
-**Both are deliberately DNS only (grey cloud), and should stay that way** unless you go through
+**All three are deliberately DNS only (grey cloud), and should stay that way** unless you go through
 the list below. Turning the orange cloud on breaks a Maven repository in two ways that are
 invisible from a browser:
 
@@ -77,7 +78,7 @@ invisible from a browser:
   site looks perfect to you and resolves for nobody. Bot Fight Mode is zone-wide on the free plan
   and cannot be scoped by a WAF rule, so it has to be off entirely; Browser Integrity Check can
   be skipped per-hostname with a WAF custom rule on `http.host in {"repo.drawethree.dev"
-  "ci.drawethree.dev"}`.
+  "ci.drawethree.dev" "javadocs.drawethree.dev"}`.
 - **Caching.** `.jar` is in Cloudflare's default cached-extension list. That part is harmless —
   releases are immutable and snapshots are timestamped — but a cached `maven-metadata.xml` is
   not. The publish workflow reads the live metadata and merges into it, so a stale copy would
@@ -96,9 +97,10 @@ Hosting is Forpsi. Subdomains are served out of `/subdoms/`, **not** out of a fo
 root:
 
 ```
-/subdoms/repo    ->  repo.drawethree.dev
-/subdoms/ci      ->  ci.drawethree.dev
-/www             ->  the portfolio site at www.drawethree.dev
+/subdoms/repo        ->  repo.drawethree.dev
+/subdoms/ci          ->  ci.drawethree.dev
+/subdoms/javadocs    ->  javadocs.drawethree.dev
+/www                 ->  the portfolio site at www.drawethree.dev
 ```
 
 A folder you create yourself at `/www/repo` is served at `www.drawethree.dev/repo/` and nowhere
@@ -164,7 +166,7 @@ somewhere else, in which case log in once with any client and copy what you see.
 
 ## Publishing
 
-**A snapshot** — push to `master`. Deploys `1.0.0-SNAPSHOT` to `/snapshots` and adds a row to
+**A snapshot** — push to `master`. Deploys `1.0.1-SNAPSHOT` to `/snapshots` and adds a row to
 the build listing.
 
 **A release** — tag it:
