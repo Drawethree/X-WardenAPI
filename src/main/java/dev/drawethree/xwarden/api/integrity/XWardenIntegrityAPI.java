@@ -20,6 +20,12 @@ import java.util.concurrent.CompletableFuture;
  * <p>Only unstackable items can be fingerprinted. An identity lives in the item's metadata, so
  * splitting a stamped stack would hand both halves the same one - a duplicate nobody created,
  * reported at high confidence against an innocent player.
+ *
+ * <p>Every unstackable item is stamped the first time X-Warden sees it in a real container, and
+ * duplicates are found the moment they appear, not only on a sweep. A duplicate copy is taken out
+ * of play and kept, so a staff member can hand it back. One identity seen in the hands of several
+ * different players is not a dupe but a template - a kit, a shop entry, a crate reward saved from
+ * a stamped item - and is reported as such; {@link #stripIdentity} is how the template is fixed.
  */
 public interface XWardenIntegrityAPI {
 
@@ -91,4 +97,46 @@ public interface XWardenIntegrityAPI {
 
     @ThreadSafety(Requirement.ANY)
     void unregisterContainerSource(ContainerSource source);
+
+    /**
+     * Items taken out of play from one player's inventory, newest first.
+     *
+     * @param player the player, or {@code null} for copies that sat in a block, on the ground or
+     *               in an item frame
+     */
+    @ThreadSafety(Requirement.OFF_PRIMARY)
+    List<QuarantinedItem> quarantined(java.util.UUID player, int limit);
+
+    /** The most recent items taken out of play, whoever held them. */
+    @ThreadSafety(Requirement.OFF_PRIMARY)
+    List<QuarantinedItem> recentQuarantine(int limit);
+
+    @ThreadSafety(Requirement.OFF_PRIMARY)
+    Optional<QuarantinedItem> quarantinedItem(long id);
+
+    /**
+     * Hands a quarantined item back to the player it was taken from.
+     *
+     * <p>The item comes back with a fresh identity: staff have decided both copies are legitimate,
+     * so they must not share one.
+     */
+    @ThreadSafety(Requirement.PRIMARY)
+    RestoreOutcome restoreQuarantined(long id, String actor);
+
+    /** Where the live index last saw an identity. */
+    @ThreadSafety(Requirement.ANY)
+    Optional<LiveSighting> liveSighting(String uid);
+
+    /** Everything the live index places in one player's hands. */
+    @ThreadSafety(Requirement.ANY)
+    List<LiveSighting> liveSightingsOf(java.util.UUID holder);
+
+    /**
+     * Removes X-Warden's identity from an item, for a kit, shop or crate template that was saved
+     * with one on it. A prison pickaxe's own identity is never touched.
+     *
+     * @return whether anything was removed
+     */
+    @ThreadSafety(Requirement.PRIMARY)
+    boolean stripIdentity(ItemStack item);
 }

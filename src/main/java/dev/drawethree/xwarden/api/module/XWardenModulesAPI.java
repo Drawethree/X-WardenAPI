@@ -8,7 +8,7 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * X-Warden's four modules, the checks inside them, and whether those checks can actually fire.
+ * X-Warden's five modules, the checks inside them, and whether those checks can actually fire.
  */
 public interface XWardenModulesAPI {
 

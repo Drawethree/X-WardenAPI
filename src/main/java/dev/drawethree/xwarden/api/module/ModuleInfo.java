@@ -3,7 +3,7 @@ package dev.drawethree.xwarden.api.module;
 import java.util.List;
 
 /**
- * A reading of one of X-Warden's four modules and the checks inside it.
+ * A reading of one of X-Warden's five modules and the checks inside it.
  *
  * <p>The module itself is a live object with {@code enable()} and {@code disable()} on it and does
  * not leave the plugin: an addon that could start a module the owner switched off would be able to

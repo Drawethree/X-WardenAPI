@@ -2,6 +2,7 @@ package dev.drawethree.xwarden.api;
 
 import dev.drawethree.xwarden.api.addon.XWardenAddonInfo;
 import dev.drawethree.xwarden.api.automation.XWardenAutomationAPI;
+import dev.drawethree.xwarden.api.client.XWardenClientAPI;
 import dev.drawethree.xwarden.api.config.XWardenConfigAPI;
 import dev.drawethree.xwarden.api.economy.XWardenEconomyAPI;
 import dev.drawethree.xwarden.api.economy.XWardenLedgerAPI;
@@ -224,8 +225,11 @@ public interface XWardenAPI {
     /** How much like a machine somebody is mining. */
     XWardenAutomationAPI getAutomationApi();
 
-    /** The four modules, the checks inside them, and whether those checks can actually fire. */
+    /** The five modules, the checks inside them, and whether those checks can actually fire. */
     XWardenModulesAPI getModulesApi();
+
+    /** The client each player joined with, and what X-Warden made of it. */
+    XWardenClientAPI getClientApi();
 
     /** What a staff member can do, and what the server currently looks like. */
     XWardenStaffAPI getStaffApi();

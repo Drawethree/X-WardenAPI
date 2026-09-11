@@ -2,6 +2,10 @@ package dev.drawethree.xwarden.api.staff;
 
 import dev.drawethree.xwarden.api.ThreadSafety;
 import dev.drawethree.xwarden.api.ThreadSafety.Requirement;
+import dev.drawethree.xwarden.api.staff.punish.Punishment;
+import dev.drawethree.xwarden.api.staff.punish.PunishmentPreset;
+import dev.drawethree.xwarden.api.staff.punish.PunishmentResult;
+import dev.drawethree.xwarden.api.staff.punish.StaffNote;
 
 import java.util.List;
 import java.util.Map;
@@ -115,4 +119,53 @@ public interface XWardenStaffAPI {
     /** Writes a plain-text case file on one player to disk, and answers where it went. */
     @ThreadSafety(Requirement.OFF_PRIMARY)
     Optional<String> exportCase(UUID player, String playerName, int days);
+
+    /** The punishment presets in {@code warden-punishments.yml}, in file order. */
+    @ThreadSafety(Requirement.ANY)
+    List<PunishmentPreset> presets();
+
+    /**
+     * Applies a preset to a player, taking the next step of its ladder.
+     *
+     * <p>The step is chosen from how often this preset (or, if so configured, this type) has been
+     * applied to the player inside the escalation window. A configured command template is
+     * dispatched as the console; an empty template means X-Warden enforces the step itself. Either
+     * way the record is written first, so the history is complete even when the command failed.
+     *
+     * @param staff          who did it, as {@code Name (uuid)} or a plugin name
+     * @param findingId      the finding this answers, or {@code 0}
+     * @param reasonOverride replaces the preset's reason when not blank
+     */
+    @ThreadSafety(Requirement.PRIMARY)
+    PunishmentResult punish(UUID player, String playerName, String presetId, String staff,
+                            long findingId, String reasonOverride);
+
+    /** Lifts a punishment early. False when it does not exist, is not liftable, or was lifted already. */
+    @ThreadSafety(Requirement.PRIMARY)
+    boolean lift(long punishmentId, String staff, String reason);
+
+    /** Everything ever applied to a player, newest first. */
+    @ThreadSafety(Requirement.OFF_PRIMARY)
+    List<Punishment> history(UUID player, int limit);
+
+    /** The punishments binding a player right now. */
+    @ThreadSafety(Requirement.OFF_PRIMARY)
+    List<Punishment> activePunishments(UUID player);
+
+    @ThreadSafety(Requirement.OFF_PRIMARY)
+    Optional<Punishment> punishment(long punishmentId);
+
+    @ThreadSafety(Requirement.OFF_PRIMARY)
+    List<StaffNote> notes(UUID player, int limit);
+
+    @ThreadSafety(Requirement.OFF_PRIMARY)
+    StaffNote addNote(UUID player, String playerName, String note, String staff);
+
+    /**
+     * Installed plugins whose version is listed with a known exploit, as of the last scan.
+     *
+     * <p>Empty means nothing matched, or nothing has been scanned yet.
+     */
+    @ThreadSafety(Requirement.ANY)
+    List<VulnerabilityMatch> vulnerabilities();
 }
