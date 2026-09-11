@@ -1,7 +1,7 @@
 # X-WARDEN API
 
 Official API for the [X-Warden](https://builtbybit.com/resources/x-warden-anti-cheat-anti-exploit.125374/)
-plugin — anti-abuse for prison servers.
+plugin — anti-abuse for any server with an economy.
 
 Two things live here, and nothing else:
 
