@@ -209,8 +209,25 @@ jobs:
           URL="$REPO_BASE_URL/${{ steps.meta.outputs.channel }}/$GROUP_PATH/$ARTIFACT/maven-metadata.xml"
           # A shared host that 403s Maven's User-Agent, or serves a 404 page with a 200,
           # both look fine until somebody tries to depend on this. Catch it here.
-          curl -fsSL -A "Apache-Maven/3.9.9" "$URL" -o published-metadata.xml
-          grep -q "<artifactId>$ARTIFACT</artifactId>" published-metadata.xml
+          #
+          # Retried, and deliberately against the bare URL with no cache-buster. Every
+          # first publish of a channel has returned 404 here seconds after the upload and
+          # 200 a minute later, while direct probes of the host showed no lag at all. The
+          # seeding step fetches this exact URL earlier in the run and gets a 404, and the
+          # front proxy appears to remember that for a while. A cache-buster would make
+          # this pass while Maven itself still got the stale 404, which is the opposite of
+          # what a smoke test is for - so it waits until the real URL works.
+          OK=0
+          for attempt in $(seq 1 15); do
+            CODE="$(curl -s -o published-metadata.xml -w '%{http_code}' -L -A "Apache-Maven/3.9.9" --max-time 20 "$URL" || echo 000)"
+            if [ "$CODE" = "200" ] && grep -q "<artifactId>$ARTIFACT</artifactId>" published-metadata.xml; then
+              OK=1
+              break
+            fi
+            echo "  metadata returned $CODE (attempt $attempt of 15), waiting"
+            sleep 10
+          done
+          [ "$OK" = "1" ] || { echo "$URL never resolved as Maven would fetch it"; exit 1; }
           echo "$URL resolves"
           # And that the build page got its jar, which is a different server path entirely.
           # This one warns rather than fails. The upload step already proved the transfer
