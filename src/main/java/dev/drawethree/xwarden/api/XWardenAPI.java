@@ -244,9 +244,27 @@ public interface XWardenAPI {
     /**
      * Loads an addon jar that is already in the addons folder, without a restart.
      *
+     * <p>Refused if an addon by that name is already loaded. Call {@link #unloadAddon(String)}
+     * first to replace a running one.
+     *
      * @param filename the jar's file name; it must sit directly in {@code plugins/X-Warden/addons/}
      */
     boolean loadAddonFromFile(String filename);
+
+    /**
+     * Stops an addon and lets go of its jar, so the file can be replaced and loaded again.
+     *
+     * <p>Stronger than {@link #disableAddon(String)}, which only calls {@code onDisable} and leaves
+     * the addon loaded against the same classloader - so a disabled addon re-enabled after its jar
+     * changed is still running the code it started with. This closes the classloader, which is what
+     * makes a new version of the jar readable.
+     *
+     * <p>The addon is gone from {@link #getLoadedAddons()} afterwards and only
+     * {@link #loadAddonFromFile(String)} brings it back.
+     *
+     * @return false if no addon by that name is loaded
+     */
+    boolean unloadAddon(String name);
 
     /**
      * Registers where a web panel addon can be reached, so {@code /xwarden} can tell staff. Pass
