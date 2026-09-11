@@ -13,6 +13,7 @@ Two things live here, and nothing else:
 **Links:**
 - [Wiki (Documentation)](https://github.com/Drawethree/X-Warden/wiki)
 - [Developer API](https://github.com/Drawethree/X-Warden/wiki/Developer-API)
+- [Javadocs](https://javadocs.drawethree.dev/x-warden/)
 
 ## Dependency
 

@@ -231,6 +231,87 @@ jobs:
           done
           echo "::warning::$CI_URL still returns $CODE. The artifacts published; the build page did not confirm."
 
+      - name: Publish javadoc
+        # Releases only. X-Prison's javadoc is ~650 files, which is ~650 FTP round trips -
+        # measured at roughly four minutes in a single session. That is fine a few times a
+        # year and absurd on every snapshot push, for documentation nobody reads at a
+        # -SNAPSHOT version. IDE users already get the javadoc jar from the Maven repo.
+        if: steps.meta.outputs.channel == 'releases'
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          REMOTE: ${{ vars.FTP_JAVADOC_PATH || '/subdoms/javadocs' }}
+          VERSION: ${{ steps.meta.outputs.version }}
+          KEEP: '5'
+        run: |
+          set -euo pipefail
+          FTP_USERNAME="$(printf '%s' "$FTP_USERNAME" | tr -d '[:cntrl:]')"
+          FTP_PASSWORD="$(printf '%s' "$FTP_PASSWORD" | tr -d '[:cntrl:]')"
+          FTP_HOST="$(printf '%s' "$FTP_HOST" | tr -d '[:cntrl:]')"
+
+          shopt -s nullglob
+          JD=""
+          for f in target/*-javadoc.jar; do JD="$f"; break; done
+          [ -n "$JD" ] || { echo "no javadoc jar in target/"; exit 1; }
+
+          rm -rf javadoc
+          mkdir -p "javadoc/$SLUG/$VERSION"
+          unzip -q "$JD" -d "javadoc/$SLUG/$VERSION"
+          echo "unpacked $(find "javadoc/$SLUG/$VERSION" -type f | wc -l) files for $VERSION"
+
+          # One small redirect rather than a second copy of the whole site under latest/.
+          # Version directories stay immutable, so a link from the wiki never rots.
+          IDX="javadoc/$SLUG/index.html"
+          echo '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">' > "$IDX"
+          echo "<title>$ARTIFACT javadoc</title>" >> "$IDX"
+          echo "<meta http-equiv='refresh' content='0; url=$VERSION/'>" >> "$IDX"
+          echo '<style>body{font:15px system-ui,sans-serif;background:#0f1115;color:#e6e9ef;padding:48px}a{color:#5b9dff}</style>' >> "$IDX"
+          echo '</head><body>' >> "$IDX"
+          echo "Redirecting to <a href='$VERSION/'>$ARTIFACT $VERSION</a>." >> "$IDX"
+          echo '</body></html>' >> "$IDX"
+
+          # Parallel here, unlike the artifact upload: hundreds of tiny files is the one
+          # case where the round trips dominate, and the earlier 530s were a geo-block
+          # rather than anything to do with concurrent connections.
+          lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "ftp://$FTP_HOST" -e "
+            set ftp:ssl-force true;
+            set ftp:ssl-protect-data true;
+            set ssl:verify-certificate true;
+            set ftp:passive-mode true;
+            set ftp:prefer-epsv false;
+            set net:max-retries 3;
+            set net:timeout 30;
+            set net:reconnect-interval-base 5;
+            set mirror:parallel-transfer-count 4;
+            put -O ${REMOTE}/ hosting/javadocs.htaccess -o .htaccess;
+            put -O ${REMOTE}/ javadocs/root-index.html -o index.html;
+            mirror -R --no-symlinks javadoc/ ${REMOTE}/;
+            bye"
+          echo "https://javadocs.drawethree.dev/$SLUG/ now serves $VERSION"
+
+          # Retention. This is the only thing here that spends inodes in the hundreds, and
+          # shared hosting has a budget for them. Never fatal: the release is already out.
+          lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "ftp://$FTP_HOST" -e "
+            set ftp:ssl-force true; set ftp:prefer-epsv false;
+            cls -1 -F ${REMOTE}/${SLUG}/; bye" > listing.raw 2>/dev/null || true
+          grep '/$' listing.raw 2>/dev/null > dirs.raw || true
+          tr -d '/' < dirs.raw > names.raw || true
+          grep -E '^[0-9]+([.][0-9]+)*' names.raw > versions.txt || true
+          sort -V -o versions.txt versions.txt || true
+          TOTAL="$(wc -l < versions.txt || echo 0)"
+          echo "  $TOTAL published version(s), keeping newest $KEEP"
+          if [ "${TOTAL:-0}" -gt "$KEEP" ]; then
+            head -n "-$KEEP" versions.txt > prune.txt || true
+            while read -r old; do
+              [ -n "$old" ] || continue
+              echo "  pruning $SLUG/$old"
+              lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "ftp://$FTP_HOST" -e "
+                set ftp:ssl-force true; set ftp:prefer-epsv false;
+                rm -r -f ${REMOTE}/${SLUG}/${old}; bye" || echo "  could not prune $old"
+            done < prune.txt
+          fi
+
       - name: GitHub release
         if: steps.meta.outputs.channel == 'releases'
         uses: softprops/action-gh-release@v2
