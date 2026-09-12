@@ -8,6 +8,7 @@ package dev.drawethree.xwarden.api.automation;
  * @param suggested what the players actually measured
  * @param samples   how many readings that is based on. A suggestion drawn from a handful of samples
  *                  is a guess with a decimal point on it, which is why the count travels with it
+ * @since 1.0.0
  */
 public record BaselineSuggestion(String key, double current, double suggested, int samples) {
 
@@ -16,6 +17,10 @@ public record BaselineSuggestion(String key, double current, double suggested, i
      *
      * <p>A baseline that moves by a couple of percent is measurement noise, not a finding about
      * the server. Ten percent is where a suggestion starts meaning something.
+     *
+     * @return {@code true} when the suggestion differs from the current value by ten percent or
+     *         more, or when there is no current value at all
+     * @since 1.0.0
      */
     public boolean isMeaningfullyDifferent() {
         if (this.current <= 0.0D) {

@@ -21,6 +21,7 @@ import java.util.UUID;
  * @param displayName the item's custom name with formatting removed, or {@code null}
  * @param lore        its lore with formatting removed, which is where a prison pickaxe keeps the
  *                    enchants that tell two otherwise identical items apart
+ * @since 1.0.0
  */
 public record HeldItem(String uid,
                        String itemClass,
@@ -33,6 +34,20 @@ public record HeldItem(String uid,
                        String displayName,
                        List<String> lore) {
 
+    /**
+     * Copies the lore so the record cannot be changed through the list it was built from.
+     *
+     * @param uid         the identity the item is recognised by
+     * @param itemClass   the class it was fingerprinted as
+     * @param holder      whose storage it was found in, or {@code null}
+     * @param holderName  that holder's name
+     * @param container   where it was found
+     * @param slot        the slot, or {@code -1}
+     * @param amount      the size of the stack
+     * @param material    the Bukkit material name
+     * @param displayName the custom name, or {@code null}
+     * @param lore        the lore, or {@code null} for none
+     */
     public HeldItem {
         lore = lore == null ? List.of() : List.copyOf(lore);
     }

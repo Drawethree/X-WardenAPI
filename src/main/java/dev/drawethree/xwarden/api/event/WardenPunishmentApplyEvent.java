@@ -13,6 +13,8 @@ import java.util.UUID;
  *
  * <p>Cancelling stops it entirely: nothing is written and no command runs. For a plugin that knows
  * the player is exempt, or that wants to route the punishment through a system of its own.
+ *
+ * @since 1.1.0
  */
 public final class WardenPunishmentApplyEvent extends Event implements Cancellable {
 
@@ -28,6 +30,18 @@ public final class WardenPunishmentApplyEvent extends Event implements Cancellab
 
     private boolean cancelled;
 
+    /**
+     * Creates the event. X-Warden fires it; a plugin only listens.
+     *
+     * @param player     who is about to be punished
+     * @param playerName their name
+     * @param preset     the preset id
+     * @param step       the rung of its ladder that applies
+     * @param reason     what the player will be told
+     * @param staff      who asked for it
+     * @param findingId  the finding it answers, or {@code 0}
+     * @since 1.1.0
+     */
     public WardenPunishmentApplyEvent(UUID player, String playerName, String preset,
                                       PunishmentStep step, String reason, String staff,
                                       long findingId) {
@@ -40,32 +54,72 @@ public final class WardenPunishmentApplyEvent extends Event implements Cancellab
         this.findingId = findingId;
     }
 
+    /**
+     * Who is about to be punished.
+     *
+     * @return the player
+     * @since 1.1.0
+     */
     public UUID getPlayer() {
         return this.player;
     }
 
+    /**
+     * Their name, as X-Warden knows it.
+     *
+     * @return the name
+     * @since 1.1.0
+     */
     public String getPlayerName() {
         return this.playerName;
     }
 
+    /**
+     * The preset being applied.
+     *
+     * @return its id in {@code warden-punishments.yml}
+     * @since 1.1.0
+     */
     public String getPreset() {
         return this.preset;
     }
 
+    /**
+     * The rung of the ladder that applies this time.
+     *
+     * @return the step
+     * @since 1.1.0
+     */
     public PunishmentStep getStep() {
         return this.step;
     }
 
+    /**
+     * What the player will be told.
+     *
+     * @return the reason
+     * @since 1.1.0
+     */
     public String getReason() {
         return this.reason;
     }
 
-    /** Who asked for it, as {@code Name (uuid)}, a plugin name, or the check that fired. */
+    /**
+     * Who asked for it.
+     *
+     * @return a staff member as {@code Name (uuid)}, a plugin name, or the check that fired
+     * @since 1.1.0
+     */
     public String getStaff() {
         return this.staff;
     }
 
-    /** The finding it answers, or {@code 0}. */
+    /**
+     * The finding it answers.
+     *
+     * @return its id, or {@code 0} when staff issued the punishment directly
+     * @since 1.1.0
+     */
     public long getFindingId() {
         return this.findingId;
     }
@@ -86,6 +140,12 @@ public final class WardenPunishmentApplyEvent extends Event implements Cancellab
         return HANDLERS;
     }
 
+    /**
+     * Bukkit's handler list for this event.
+     *
+     * @return the handler list
+     * @since 1.1.0
+     */
     public static HandlerList getHandlerList() {
         return HANDLERS;
     }

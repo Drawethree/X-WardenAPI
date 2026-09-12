@@ -15,6 +15,7 @@ import java.util.Map;
  * @param duplicateCount how many identities were found in more than one place
  * @param duplicateCopies how many places those identities were found in altogether
  * @param countsByClass  how many tracked items of each class were seen
+ * @since 1.0.0
  */
 public record ScanSummary(long scanId,
                           long finishedAt,
@@ -23,6 +24,12 @@ public record ScanSummary(long scanId,
                           int duplicateCopies,
                           Map<String, Long> countsByClass) {
 
+    /**
+     * Whether the sweep found any duplicated identity.
+     *
+     * @return whether {@link #duplicateCount()} is above zero
+     * @since 1.0.0
+     */
     public boolean foundAnything() {
         return this.duplicateCount > 0;
     }

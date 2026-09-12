@@ -4,6 +4,28 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.UUID;
 
+/**
+ * One player's mining income in one currency over one window.
+ *
+ * <p>In memory the window is a minute; on disk it is an hour, plus one running lifetime total per
+ * player and currency. Two buckets for the same player, currency and window fold into one with
+ * {@link #mergedWith}.
+ *
+ * @param player            whose income
+ * @param playerName        their name, or {@code null} when X-Warden never saw them join
+ * @param currency          which currency
+ * @param windowStart       the start of the window, as epoch milliseconds
+ * @param windowEnd         its end
+ * @param grossBase         what the payouts were worth before anything multiplied them
+ * @param netCredited       what actually reached the balance
+ * @param blocks            how many blocks were broken
+ * @param payouts           how many payouts there were
+ * @param multiplierMin     the smallest total multiplier measured, or {@code null} when none was
+ * @param multiplierMax     the largest, or {@code null}
+ * @param multiplierAverage the average over the audited payouts, or {@code null}
+ * @param auditSamples      how many payouts were measured in full for the multiplier figures
+ * @since 1.0.0
+ */
 public record IncomeBucket(UUID player,
                            String playerName,
                            String currency,
@@ -20,10 +42,18 @@ public record IncomeBucket(UUID player,
 
     private static final int MULTIPLIER_SCALE = 8;
 
-    // Two readings of the same player, currency and hour, added together. The rollup folds minutes
-    // into an hour with this and the income table folds a new hour into the row it already holds
-    // with it, so both have to agree: a server restarted mid-hour writes that hour twice, and the
-    // second write replacing the first is how an hour of somebody's mining used to disappear.
+    /**
+     * Two readings of the same player, currency and window, added together.
+     *
+     * <p>The rollup folds minutes into an hour with this and the income table folds a new hour into
+     * the row it already holds with it, so both have to agree: a server restarted mid-hour writes
+     * that hour twice, and the second write replacing the first is how an hour of somebody's mining
+     * used to disappear.
+     *
+     * @param other the other reading, or {@code null} for none
+     * @return the sum, spanning both windows
+     * @since 1.0.0
+     */
     public IncomeBucket mergedWith(IncomeBucket other) {
         if (other == null) {
             return this;

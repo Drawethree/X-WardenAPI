@@ -15,15 +15,33 @@ import java.lang.annotation.Target;
  * the whole game, and a server call off it corrupts state in ways that surface much later.
  *
  * <p>So every method that has a requirement declares it here, and X-Warden enforces it: a call from
- * the wrong thread throws immediately rather than working nine times out of ten.
+ * the wrong thread throws {@link IllegalStateException} immediately, naming the method and the
+ * thread it wanted, rather than working nine times out of ten.
+ *
+ * <p>An addon doing work on a thread of its own - a web request, a socket - reaches the server
+ * thread through {@link dev.drawethree.xwarden.api.addon.XWardenAddonContext#call} and leaves it
+ * through {@link dev.drawethree.xwarden.api.addon.XWardenAddonContext#async}.
+ *
+ * @since 1.0.0
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
 public @interface ThreadSafety {
 
+    /**
+     * The thread the annotated method must be called from.
+     *
+     * @return the requirement
+     * @since 1.0.0
+     */
     Requirement value();
 
+    /**
+     * The three answers to "which thread".
+     *
+     * @since 1.0.0
+     */
     enum Requirement {
 
         /**

@@ -1,7 +1,12 @@
 package dev.drawethree.xwarden.api.staff.punish;
 
-/** Why a punishment was not applied, or that it was. */
+/**
+ * Why a punishment was not applied, or that it was.
+ *
+ * @since 1.1.0
+ */
 public enum PunishmentOutcome {
+    /** It was recorded and applied. */
     APPLIED,
     /** The punishment system is switched off in {@code warden-punishments.yml}. */
     DISABLED,

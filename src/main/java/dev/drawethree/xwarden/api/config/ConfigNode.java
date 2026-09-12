@@ -9,6 +9,7 @@ import java.util.List;
  * the defaults bundled in the jar. Which layer answered is not a detail - an editor that hides it
  * leaves an owner changing a value in a file that is not the one being read.
  *
+ * @param path              the dotted path, as {@code modules.economy.checks.income-per-block.enabled}
  * @param value             the value in force, rendered as text
  * @param type              {@code boolean}, {@code number}, {@code string} or {@code list}
  * @param comment           the comment lines above it in the bundled file, which is where the
@@ -20,6 +21,7 @@ import java.util.List;
  *                          value identical to the bundled default defers to the preset, so
  *                          "reset to default" on such a key quietly yields the preset's value
  *                          instead of the default's
+ * @since 1.0.0
  */
 public record ConfigNode(String path,
                          String value,
@@ -29,7 +31,11 @@ public record ConfigNode(String path,
                          boolean editable,
                          boolean shadowedByPreset) {
 
-    /** Which of the three layers answered for this setting. */
+    /**
+     * Which of the three layers answered for this setting.
+     *
+     * @since 1.0.0
+     */
     public enum Source {
         /** The server owner's own file. */
         OWN,

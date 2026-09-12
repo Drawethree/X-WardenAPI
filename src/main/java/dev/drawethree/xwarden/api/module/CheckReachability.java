@@ -12,11 +12,15 @@ package dev.drawethree.xwarden.api.module;
  * who raises a threshold themselves - not knowing decay is per minute - reproduces it on their own
  * server, and nothing tells them.
  *
+ * @param moduleId        the module
+ * @param checkId         the check
+ * @param reachable       whether the ceiling reaches the threshold
  * @param ceiling         the highest violation level this check can hold, given its cadence
  * @param threshold       the level it has to reach to act
  * @param decayPerCadence how much decays away between one finding and the next
  * @param cadenceSeconds  how often the check can report, from the settings in force
  * @param explanation     the same thing in a sentence, ready to show to a server owner
+ * @since 1.0.0
  */
 public record CheckReachability(String moduleId,
                                 String checkId,

@@ -7,6 +7,8 @@ package dev.drawethree.xwarden.api.economy;
  * nothing at all and can only be watched for balance changes. A check whose capability is absent is
  * switched off with a line in the console saying why, never left running on guesswork - so an
  * integrator should ask before assuming a reading is available.
+ *
+ * @since 1.0.0
  */
 public enum EconomyCapability {
 

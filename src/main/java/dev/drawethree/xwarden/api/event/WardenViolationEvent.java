@@ -28,6 +28,8 @@ import java.util.UUID;
  *     }
  * }
  * }</pre>
+ *
+ * @since 1.0.0
  */
 public final class WardenViolationEvent extends Event implements Cancellable {
 
@@ -43,6 +45,19 @@ public final class WardenViolationEvent extends Event implements Cancellable {
 
     private boolean cancelled;
 
+    /**
+     * Creates the event. X-Warden fires it; a plugin only listens.
+     *
+     * @param async      whether it is being fired off the server thread
+     * @param player     who the finding is about
+     * @param playerName their name
+     * @param moduleId   the module
+     * @param checkId    the check
+     * @param scope      what it was narrowed to, or {@code null}
+     * @param confidence 0 - 100
+     * @param evidence   the measurements behind it
+     * @since 1.0.0
+     */
     public WardenViolationEvent(boolean async, UUID player, String playerName, String moduleId,
                                 String checkId, String scope, int confidence,
                                 EvidenceSnapshot evidence) {
@@ -56,34 +71,72 @@ public final class WardenViolationEvent extends Event implements Cancellable {
         this.evidence = evidence;
     }
 
+    /**
+     * Who the finding is about.
+     *
+     * @return the player
+     * @since 1.0.0
+     */
     public UUID getPlayer() {
         return this.player;
     }
 
-    /** The name Warden knows them by, which may be a uuid fragment for somebody it never saw join. */
+    /**
+     * The name Warden knows them by.
+     *
+     * @return the name, which may be the one on disk for somebody Warden never saw join
+     * @since 1.0.0
+     */
     public String getPlayerName() {
         return this.playerName;
     }
 
+    /**
+     * The module the check belongs to.
+     *
+     * @return the module id
+     * @since 1.0.0
+     */
     public String getModuleId() {
         return this.moduleId;
     }
 
+    /**
+     * The check that fired.
+     *
+     * @return the check id, as spelled in {@code warden.yml}
+     * @since 1.0.0
+     */
     public String getCheckId() {
         return this.checkId;
     }
 
-    /** What the finding was narrowed to - a currency, for the economy checks - or {@code null}. */
+    /**
+     * What the finding was narrowed to.
+     *
+     * @return a currency, for the economy checks, or {@code null}
+     * @since 1.0.0
+     */
     public String getScope() {
         return this.scope;
     }
 
-    /** How sure the check is, 0 to 100. Not how serious it is. */
+    /**
+     * How sure the check is. Not how serious it is.
+     *
+     * @return 0 to 100
+     * @since 1.0.0
+     */
     public int getConfidence() {
         return this.confidence;
     }
 
-    /** The measurements behind the finding. Never modify it. */
+    /**
+     * The measurements behind the finding.
+     *
+     * @return the evidence, which is immutable
+     * @since 1.0.0
+     */
     public EvidenceSnapshot getEvidence() {
         return this.evidence;
     }
@@ -104,6 +157,12 @@ public final class WardenViolationEvent extends Event implements Cancellable {
         return HANDLERS;
     }
 
+    /**
+     * Bukkit's handler list for this event.
+     *
+     * @return the handler list
+     * @since 1.0.0
+     */
     public static HandlerList getHandlerList() {
         return HANDLERS;
     }

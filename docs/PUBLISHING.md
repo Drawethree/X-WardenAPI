@@ -64,9 +64,9 @@ DNS is on Cloudflare. Both records point at the web hosting — the same address
 not the game server address the `play` and `demo-*` records use:
 
 ```
-repo        A    185.129.138.221    DNS only
-ci          A    185.129.138.221    DNS only
-javadocs    A    185.129.138.221    DNS only
+repo        A    <web hosting IP>    DNS only
+ci          A    <web hosting IP>    DNS only
+javadocs    A    <web hosting IP>    DNS only
 ```
 
 **All three are deliberately DNS only (grey cloud), and should stay that way** unless you go through
@@ -141,10 +141,9 @@ saying which countries may connect.
 Explicit FTPS is supported and verified against this host, so `ftp:ssl-force true` in the workflow
 holds — the password never crosses the wire in the clear.
 
-The web IP does not answer on port 21 at all; FTP lives on a separate host. There is also an
-OpenSSH on port 2222 of the web IP, publickey-only, if a Forpsi plan ever exposes SFTP — that
-would be the better transport, since CI would hold a revocable key rather than the account
-password.
+The web IP does not answer on port 21 at all; FTP lives on a separate host. The hosting panel
+lists the SSH endpoint too, publickey-only, if a Forpsi plan ever exposes SFTP — that would be the
+better transport, since CI would hold a revocable key rather than the account password.
 
 That is the main hosting account, which reaches the whole site. If Forpsi lets you add an FTP
 account scoped to `/subdoms`, use one — and rotate this password if it has ever been pasted

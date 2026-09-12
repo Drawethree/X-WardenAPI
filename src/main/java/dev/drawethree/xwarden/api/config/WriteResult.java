@@ -8,9 +8,15 @@ package dev.drawethree.xwarden.api.config;
  * what a false positive on each check looks like. Anything it cannot locate unambiguously it
  * refuses rather than guesses at, and a refusal says which of those it was.
  *
- * @param written   what was asked for
+ * @param ok        whether the file was changed
+ * @param reason    {@link Reason#OK}, or why not
+ * @param path      the setting that was asked for
+ * @param written   the value that was asked for, or {@code null} on a refusal
  * @param effective what the setting reads as now that the file has been re-read, which is not
- *                  always what was written - see {@link Reason#SHADOWED_BY_PRESET}
+ *                  always what was written - see {@link Reason#SHADOWED_BY_PRESET}; {@code null}
+ *                  on a refusal
+ * @param detail    a sentence on what happened, for a refusal; empty otherwise
+ * @since 1.0.0
  */
 public record WriteResult(boolean ok,
                           Reason reason,
@@ -19,7 +25,13 @@ public record WriteResult(boolean ok,
                           String effective,
                           String detail) {
 
+    /**
+     * What happened to a write, in one word.
+     *
+     * @since 1.0.0
+     */
     public enum Reason {
+        /** The line was rewritten and reads back as intended. */
         OK,
         /** No line in the file holds that path. */
         NOT_FOUND,
@@ -47,10 +59,28 @@ public record WriteResult(boolean ok,
         SHADOWED_BY_PRESET
     }
 
+    /**
+     * A successful write.
+     *
+     * @param path      the setting
+     * @param written   what was written
+     * @param effective what it reads as now
+     * @return the result
+     * @since 1.0.0
+     */
     public static WriteResult ok(String path, String written, String effective) {
         return new WriteResult(true, Reason.OK, path, written, effective, "");
     }
 
+    /**
+     * A refused write. Nothing was changed.
+     *
+     * @param reason why
+     * @param path   the setting
+     * @param detail a sentence on what happened
+     * @return the result
+     * @since 1.0.0
+     */
     public static WriteResult refused(Reason reason, String path, String detail) {
         return new WriteResult(false, reason, path, null, null, detail);
     }

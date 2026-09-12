@@ -15,6 +15,7 @@ import java.util.List;
  * @param material the icon in the menu, as a Bukkit material name
  * @param lore     extra menu lines, raw MiniMessage
  * @param ladder   at least one step
+ * @since 1.1.0
  */
 public record PunishmentPreset(String id,
                                String name,
@@ -23,7 +24,13 @@ public record PunishmentPreset(String id,
                                List<String> lore,
                                List<PunishmentStep> ladder) {
 
-    /** The step that applies after this many prior applications. */
+    /**
+     * The step that applies after this many prior applications.
+     *
+     * @param prior how many times the preset has applied to the player inside the window
+     * @return the rung; past the end of the ladder the last one repeats
+     * @since 1.1.0
+     */
     public PunishmentStep stepFor(int prior) {
         int index = Math.max(0, Math.min(this.ladder.size() - 1, prior));
         return this.ladder.get(index);
