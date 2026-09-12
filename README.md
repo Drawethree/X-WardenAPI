@@ -60,8 +60,7 @@ dependencies {
 
 Pin a real version. Maven 3 dropped `LATEST` and `RELEASE` for dependency resolution, so a build
 that asks for one resolves differently depending on who runs it, or not at all. The development
-head is published to `https://repo.drawethree.dev/snapshots` under the next `-SNAPSHOT` version if
-you want it.
+head is published to `https://repo.drawethree.dev/snapshots` as `1.1.1-SNAPSHOT` if you want it.
 
 Sources and javadoc jars are published alongside each release, so your IDE will show the contract
 and its comments rather than decompiled bytecode.
